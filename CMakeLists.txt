@@ -1,19 +1,19 @@
 ##===------------------------------------------------------------------------------*- CMake -*-===##
-##                          _                      
-##                         | |                     
-##                       __| | __ ___      ___ ___  
-##                      / _` |/ _` \ \ /\ / / '_  | 
+##                          _
+##                         | |
+##                       __| | __ ___      ___ ___
+##                      / _` |/ _` \ \ /\ / / '_  |
 ##                     | (_| | (_| |\ V  V /| | | |
 ##                      \__,_|\__,_| \_/\_/ |_| |_| - Compiler Toolchain
 ##
 ##
-##  This file is distributed under the MIT License (MIT). 
+##  This file is distributed under the MIT License (MIT).
 ##  See LICENSE.txt for details.
 ##
 ##===------------------------------------------------------------------------------------------===##
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING 
+  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
       "Choose the type of build, options are: Debug Release RelWithDebInfo." FORCE)
 endif()
 
@@ -27,13 +27,20 @@ if(NOT CMAKE_INSTALL_PREFIX)
 endif()
 
 project(dawn C CXX)
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.14.5)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 set(YODA_ROOT CACHE PATH "path to yoda package")
 
 if("${YODA_ROOT}" STREQUAL "")
-  message(FATAL_ERROR "YODA_ROOT not found! Try specifying it in the environment via -DYODA_ROOT=<>")
+  include(FetchContent)
+  FetchContent_Declare(
+    yoda
+    GIT_REPOSITORY https://github.com/MeteoSwiss-APN/yoda.git
+  )
+  FetchContent_Populate(yoda)
+  FetchContent_GetProperties(yoda SOURCE_DIR YODA_ROOT)
+  # message(FATAL_ERROR "YODA_ROOT not found! Try specifying it in the environment via -DYODA_ROOT=<>")
 endif()
 list(APPEND CMAKE_MODULE_PATH "${YODA_ROOT}/cmake")
 include(yodaInit)
@@ -70,7 +77,7 @@ dawn_set_cxx_flags()
 
 # Add custom targets
 yoda_add_target_clean_all(
-  ${CMAKE_BINARY_DIR}/docs 
+  ${CMAKE_BINARY_DIR}/docs
   ${CMAKE_BINARY_DIR}/sphinx
   ${CMAKE_BINARY_DIR}/src
   ${CMAKE_BINARY_DIR}/test
@@ -94,7 +101,7 @@ make_config_string("Build shared " ${BUILD_SHARED_LIBS})
 make_config_string("Install prefix" ${CMAKE_INSTALL_PREFIX})
 yoda_report_result("Configuration summary" ${config_info})
 
-# Include the packages 
+# Include the packages
 if(DAWN_DOCUMENTATION)
   set(doc_packages Python3 Sphinx LaTeX Doxygen)
 endif()
@@ -147,8 +154,8 @@ endif()
 
 # Install headers
 install(
-  DIRECTORY ${CMAKE_SOURCE_DIR}/src/ 
-  DESTINATION ${DAWN_INSTALL_INCLUDE_DIR} 
+  DIRECTORY ${CMAKE_SOURCE_DIR}/src/
+  DESTINATION ${DAWN_INSTALL_INCLUDE_DIR}
   FILES_MATCHING PATTERN "*.h" PATTERN "*.inc" PATTERN "*.hpp"
 )
 

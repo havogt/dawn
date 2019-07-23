@@ -24,6 +24,7 @@
 #include "dawn/Serialization/ASTSerializer.h"
 #include <fstream>
 #include <google/protobuf/util/json_util.h>
+#include <mlir/IR/MLIRContext.h>
 
 namespace dawn {
 static void setAccesses(proto::iir::Accesses* protoAccesses,
@@ -308,6 +309,10 @@ void IIRSerializer::serializeMetaData(proto::iir::StencilInstantiation& target,
 
 void IIRSerializer::serializeIIR(proto::iir::StencilInstantiation& target,
                                  const std::unique_ptr<iir::IIR>& iir) {
+
+  mlir::MLIRContext ctx;
+  std::cerr << "test" << std::endl;
+
   auto protoIIR = target.mutable_internalir();
 
   auto& protoGlobalVariableMap = *protoIIR->mutable_globalvariabletovalue();
