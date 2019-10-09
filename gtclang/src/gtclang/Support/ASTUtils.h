@@ -18,6 +18,7 @@
 #include <type_traits>
 
 #include "clang/AST/ASTFwd.h"
+#include "llvm/Support/Casting.h"
 
 namespace gtclang {
 
@@ -34,11 +35,15 @@ extern std::string getClassNameFromConstructExpr(clang::CXXConstructExpr* expr);
 /// @param expr               clang stmt
 ///
 /// @ingroup support
-template <typename T>
-typename std::enable_if<std::is_base_of<clang::Stmt, typename std::decay<T>::type>::value, T*>::type
-skipAllImplicitNodes(T* e) {
-  while(e != e->IgnoreImplicit())
-    e = e->IgnoreImplicit();
-  return e;
+template <typename StmtT>
+typename std::enable_if<std::is_base_of<clang::Stmt, typename std::decay<StmtT>::type>::value,
+                        StmtT*>::type
+skipAllImplicitNodes(StmtT* s) {
+  if(auto* e = llvm::dyn_cast_or_null<clang::Expr>(s)) {
+    while(e != e->IgnoreImplicit())
+      e = e->IgnoreImplicit();
+    return e;
+  }
+  return s;
 }
 } // namespace gtclang

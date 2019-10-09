@@ -100,10 +100,16 @@ clang::CompilerInstance* createCompilerInstance(llvm::SmallVectorImpl<const char
   ccArgs.push_back(GTCLANG_CLANG_RESSOURCE_INCLUDE_PATH "/../../../../include/c++/v1/");
 #endif
 
+  const char* args_tmp[ccArgs.size()];
+  std::size_t i = 0;
+  for(auto a : ccArgs) {
+    args_tmp[i] = a;
+    ++i;
+  }
+  llvm::ArrayRef<const char*> argsArrayRef(args_tmp, ccArgs.size());
+
   std::shared_ptr<CompilerInvocation> CI(new CompilerInvocation);
-  CompilerInvocation::CreateFromArgs(*CI, const_cast<const char**>(ccArgs.data()),
-                                     const_cast<const char**>(ccArgs.data()) + ccArgs.size(),
-                                     diagnostics);
+  CompilerInvocation::CreateFromArgs(*CI, argsArrayRef, diagnostics);
   CI->getFrontendOpts().DisableFree = false;
 
   // Show the invocation, with -v
