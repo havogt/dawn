@@ -103,13 +103,18 @@ option(GTCLANG_ENABLE_GRIDTOOLS "Enable GridTools compilation" OFF)
 set(gtclang_dependencies "boost" "dawn")
 
 if(GTCLANG_ENABLE_GRIDTOOLS)
+  if(DEFINED ENV{GRIDTOOLS_REPOSITORY})
+    set(GRIDTOOLS_REPOSITORY $ENV{GRIDTOOLS_REPOSITORY})
+  else()
+    set(GRIDTOOLS_REPOSITORY "git@github.com:GridTools/gridtools.git")
+  endif()
   yoda_find_package(
     PACKAGE GridTools
     REQUIRED_VARS GridTools_DIR
     DEPENDS "boost"
     ADDITIONAL
       DOWNLOAD_DIR ${YODA_DOWNLOAD_DIR}
-      GIT_REPOSITORY "git@github.com:GridTools/gridtools.git"
+      GIT_REPOSITORY ${GRIDTOOLS_REPOSITORY}
       GIT_TAG "v1.0.3"
       YODA_ROOT "${GTCLANG_YODA_SOURCE_DIR}"
       CMAKE_ARGS -DSTRUCTURED_GRIDS=ON -DBOOST_ROOT=${BOOST_ROOT} -DBUILD_TESTING=OFF -DGT_ENABLE_PERFORMANCE_METERS=ON -DINSTALL_GTEST=OFF -DGT_USE_MPI=OFF

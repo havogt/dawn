@@ -102,27 +102,29 @@ if [ ! -z ${DAWN_PATH} ]; then
 fi
 
 if [ "$ENABLE_GPU" = true ]; then
-  cmake ${CMAKE_ARGS} -DGTCLANG_BUILD_CUDA_EXAMPLES=OFF -DGTCLANG_BUILD_GT_CPU_EXAMPLES=OFF -DGTCLANG_BUILD_GT_GPU_EXAMPLES=ON -DCTEST_CUDA_SUBMIT=ON -DGTCLANG_SLURM_RESOURCES="${SLURM_RESOURCES[@]}" -DGTCLANG_SLURM_PARTITION=${SLURM_PARTITION} -DGPU_DEVICE=${GPU_DEVICE} ../
+  cmake ${CMAKE_ARGS} -DGTCLANG_BUILD_CUDA_EXAMPLES=OFF -DGTCLANG_BUILD_GT_CPU_EXAMPLES=OFF -DGTCLANG_BUILD_GT_GPU_EXAMPLES=ON -DCTEST_CUDA_SUBMIT=OFF -DGTCLANG_SLURM_RESOURCES="${SLURM_RESOURCES[@]}" -DGTCLANG_SLURM_PARTITION=${SLURM_PARTITION} -DGPU_DEVICE=${GPU_DEVICE} ../
 elif [ "$ENABLE_CUDA" = true ]; then
-  cmake ${CMAKE_ARGS} -DGTCLANG_BUILD_CUDA_EXAMPLES=ON -DGTCLANG_BUILD_GT_CPU_EXAMPLES=OFF -DGTCLANG_BUILD_GT_GPU_EXAMPLES=OFF -DCTEST_CUDA_SUBMIT=ON -DGTCLANG_SLURM_RESOURCES="${SLURM_RESOURCES[@]}" -DGTCLANG_SLURM_PARTITION=${SLURM_PARTITION} -DGPU_DEVICE=${GPU_DEVICE} ../
+  cmake ${CMAKE_ARGS} -DGTCLANG_BUILD_CUDA_EXAMPLES=ON -DGTCLANG_BUILD_GT_CPU_EXAMPLES=OFF -DGTCLANG_BUILD_GT_GPU_EXAMPLES=OFF -DCTEST_CUDA_SUBMIT=OFF -DGTCLANG_SLURM_RESOURCES="${SLURM_RESOURCES[@]}" -DGTCLANG_SLURM_PARTITION=${SLURM_PARTITION} -DGPU_DEVICE=${GPU_DEVICE} ../
 else
   cmake ${CMAKE_ARGS} -DGTCLANG_BUILD_CUDA_EXAMPLES=OFF -DGTCLANG_BUILD_GT_CPU_EXAMPLES=ON -DGTCLANG_BUILD_GT_GPU_EXAMPLES=OFF ../
 fi
 
-nice make -j6 install
+nice make -j24 install
 
-slurm_script_template=${base_dir}/scripts/jenkins/submit.${myhost}.slurm
-slurm_script=${build_dir}/submit.${myhost}.slurm.job
+#slurm_script_template=${base_dir}/scripts/jenkins/submit.${myhost}.slurm
+#slurm_script=${build_dir}/submit.${myhost}.slurm.job
 
-cp ${slurm_script_template} ${slurm_script} 
-/bin/sed -i 's|<BUILD_DIR>|'"${build_dir}"'|g' ${slurm_script}
-/bin/sed -i 's|<ENV>|'"source ${env_file}"'|g' ${slurm_script}
-/bin/sed -i 's|<CMD>|'"ctest -VV  -C ${build_type} --output-on-failure --force-new-ctest-process"'|g' ${slurm_script}
+#cp ${slurm_script_template} ${slurm_script} 
+#/bin/sed -i 's|<BUILD_DIR>|'"${build_dir}"'|g' ${slurm_script}
+#/bin/sed -i 's|<ENV>|'"source ${env_file}"'|g' ${slurm_script}
+#/bin/sed -i 's|<CMD>|'"ctest -VV  -C ${build_type} --output-on-failure --force-new-ctest-process"'|g' ${slurm_script}
 
 set +e
-sbatch --wait ${slurm_script}
+#sbatch --wait ${slurm_script}
+ctest -VV  -C ${build_type} --output-on-failure --force-new-ctest-process
 set -e
 
 # wait for all jobs to finish
-out=${build_dir}/test.log
-check_output ${out}
+#out=${build_dir}/test.log
+#check_output ${out}
+
