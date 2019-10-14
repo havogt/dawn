@@ -209,9 +209,8 @@ void Stage::updateGlobalVariablesInfo() {
 
   for(const auto& doMethodPtr : getChildren()) {
     const DoMethod& doMethod = *doMethodPtr;
-    for(const auto& statementAccessesPair : doMethod.getChildren()) {
-      const auto& access =
-          statementAccessesPair->getStatement()->getData<IIRStmtData>().CallerAccesses;
+    for(const auto& stmt : doMethod.getStatements()) {
+      const auto& access = stmt->getData<IIRStmtData>().CallerAccesses;
       DAWN_ASSERT(access);
       for(const auto& accessPair : access->getWriteAccesses()) {
         int AccessID = accessPair.first;
@@ -227,12 +226,9 @@ void Stage::updateGlobalVariablesInfo() {
         }
       }
 
-      const std::shared_ptr<iir::Stmt>& statement = statementAccessesPair->getStatement();
-      DAWN_ASSERT(statement);
-
       // capture all the accesses to global accesses of stencil function called
       // from this statement
-      statement->accept(functionCallGlobaParamVisitor);
+      stmt->accept(functionCallGlobaParamVisitor);
     }
   }
 
@@ -287,12 +283,12 @@ Stage::split(std::deque<int>& splitterIndices,
   DAWN_ASSERT_MSG(hasSingleDoMethod(), "Stage::split does not support multiple Do-Methods");
   DoMethod& thisDoMethod = getSingleDoMethod();
 
-  DAWN_ASSERT(thisDoMethod.getChildren().size() >= 2);
+  DAWN_ASSERT(thisDoMethod.getStatements().size() >= 2);
   DAWN_ASSERT(!graphs || splitterIndices.size() == graphs->size() - 1);
 
   std::vector<std::unique_ptr<Stage>> newStages;
 
-  splitterIndices.push_back(thisDoMethod.getChildren().size() - 1);
+  splitterIndices.push_back(thisDoMethod.getStatements().size() - 1);
   DoMethod::StatementAccessesIterator prevSplitterIndex = thisDoMethod.childrenBegin();
 
   // Create new stages

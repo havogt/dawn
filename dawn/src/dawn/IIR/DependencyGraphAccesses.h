@@ -15,6 +15,7 @@
 #ifndef DAWN_IIR_DEPENDENCYGRAPHACCESSES_H
 #define DAWN_IIR_DEPENDENCYGRAPHACCESSES_H
 
+#include "dawn/IIR/ASTStmt.h"
 #include "dawn/IIR/DependencyGraph.h"
 #include "dawn/IIR/Extents.h"
 #include "dawn/Support/DiagnosticsEngine.h"
@@ -92,8 +93,10 @@ public:
   /// +-------+           +--------+
   ///
   /// Note that only child-less nodes are processed.
+  // TODO(SAP) remove
   void
   insertStatementAccessesPair(const std::unique_ptr<iir::StatementAccessesPair>& stmtAccessPair);
+  void insertStatement(iir::Stmt const& stmt);
 
   /// @brief Insert a new node
   Vertex& insertNode(int ID);

@@ -257,20 +257,14 @@ void StencilInstantiation::dump() const {
           PrintDescLine<4> lline(Twine("Do_") + Twine(l) + " " +
                                  doMethod->getInterval().toString());
 
-          const auto& statementAccessesPairs = doMethod->getChildren();
-          for(std::size_t m = 0; m < statementAccessesPairs.size(); ++m) {
-            std::cout << "\e[1m"
-                      << ast::ASTStringifier::toString(statementAccessesPairs[m]->getStatement(),
-                                                       5 * DAWN_PRINT_INDENT)
+          for(auto const& stmt : doMethod->getStatements()) {
+            std::cout << "\e[1m" << ast::ASTStringifier::toString(stmt, 5 * DAWN_PRINT_INDENT)
                       << "\e[0m";
-            std::cout << statementAccessesPairs[m]
-                             ->getStatement()
-                             ->getData<IIRStmtData>()
-                             .CallerAccesses->toString(
-                                 [&](int AccessID) {
-                                   return getMetaData().getNameFromAccessID(AccessID);
-                                 },
-                                 6 * DAWN_PRINT_INDENT)
+            std::cout << stmt->getData<IIRStmtData>().CallerAccesses->toString(
+                             [&](int AccessID) {
+                               return getMetaData().getNameFromAccessID(AccessID);
+                             },
+                             6 * DAWN_PRINT_INDENT)
                       << "\n";
           }
           l += 1;
@@ -290,15 +284,10 @@ void StencilInstantiation::dump() const {
 void StencilInstantiation::reportAccesses() const {
   // Stencil functions
   for(const auto& stencilFun : metadata_.getStencilFunctionInstantiations()) {
-    const auto& statementAccessesPairs = stencilFun->getStatementAccessesPairs();
-
-    for(std::size_t i = 0; i < statementAccessesPairs.size(); ++i) {
-      std::cout << "\nACCESSES: line "
-                << statementAccessesPairs[i]->getStatement()->getSourceLocation().Line << ": "
-                << statementAccessesPairs[i]
-                       ->getStatement()
-                       ->getData<iir::IIRStmtData>()
-                       .CalleeAccesses->reportAccesses(stencilFun.get())
+    for(auto const& stmt : stencilFun->getStatements()) {
+      std::cout << "\nACCESSES: line " << stmt->getSourceLocation().Line << ": "
+                << stmt->getData<iir::IIRStmtData>().CalleeAccesses->reportAccesses(
+                       stencilFun.get())
                 << "\n";
     }
   }

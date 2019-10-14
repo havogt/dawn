@@ -202,8 +202,8 @@ public:
     statements_.push_back(stmt);
   }
 
-  // TODO refactor_AST: this non-const getter is a source of problems: no runtime checks on data
-  // type when user changes the vector!
+  // TODO(SAP) refactor_AST: this non-const getter is a source of problems: no runtime checks on
+  // data type when user changes the vector!
   std::vector<std::shared_ptr<Stmt>>& getStatements() { return statements_; }
   const std::vector<std::shared_ptr<Stmt>>& getStatements() const { return statements_; }
 

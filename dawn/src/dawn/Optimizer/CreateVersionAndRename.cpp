@@ -96,7 +96,7 @@ int createVersionAndRename(iir::StencilInstantiation* instantiation, int AccessI
 
   // Recompute the accesses of the current statement (only works with single Do-Methods - for now)
   computeAccesses(instantiation,
-                  stencil->getStage(curStageIdx)->getSingleDoMethod().getChildren()[curStmtIdx]);
+                  stencil->getStage(curStageIdx)->getSingleDoMethod().getStatements()[curStmtIdx]);
 
   // Rename the statement and accesses
   for(int stageIdx = curStageIdx;

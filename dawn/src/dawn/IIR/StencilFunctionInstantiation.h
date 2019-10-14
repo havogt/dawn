@@ -365,7 +365,10 @@ public:
   //===----------------------------------------------------------------------------------------===//
 
   /// @brief Get the statements of the stencil function
-  const std::vector<std::unique_ptr<StatementAccessesPair>>& getStatementAccessesPairs() const;
+  // const std::vector<std::unique_ptr<StatementAccessesPair>>& getStatementAccessesPairs() const;
+  auto const& getStatements() const {
+    return doMethod_->getStatements();
+  } // TODO(SAP) move to header
 
   /// @brief Update the fields and global variables
   ///

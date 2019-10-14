@@ -15,6 +15,8 @@
 #ifndef DAWN_IIR_DOMETHOD_H
 #define DAWN_IIR_DOMETHOD_H
 
+#include "dawn/IIR/AST.h"
+#include "dawn/IIR/ASTStmt.h"
 #include "dawn/IIR/Field.h"
 #include "dawn/IIR/IIRNode.h"
 #include "dawn/IIR/Interval.h"
@@ -37,6 +39,7 @@ class StencilMetaInformation;
 class DoMethod : public IIRNode<Stage, DoMethod, StatementAccessesPair> {
   Interval interval_;
   long unsigned int id_;
+  std::optional<iir::AST> ast_; // TODO(SAP): remove optional
 
   struct DerivedInfo {
     DerivedInfo() : dependencyGraph_(nullptr) {}
@@ -130,6 +133,13 @@ public:
   /// @brief update the derived info from the children (currently no information are propagated,
   /// therefore the method is empty
   inline virtual void updateFromChildren() override {}
+
+  void setAST(iir::AST&& ast) { ast_ = std::move(ast); }
+  iir::AST const& getAST() const { return *ast_; }
+  iir::AST& getAST() { return *ast_; }
+
+  auto const& getStatements() const { return ast_->getRoot()->getStatements(); }
+  auto& getStatements() { return ast_->getRoot()->getStatements(); }
 };
 
 } // namespace iir

@@ -370,6 +370,8 @@ public:
     // stencil calls
     bool cloneAST = scope_.size() > 1;
     std::shared_ptr<iir::AST> ast = cloneAST ? verticalRegion->Ast->clone() : verticalRegion->Ast;
+    // TODO(SAP) should be
+    // iir::AST ast(*(verticalRegion->Ast));
 
     // Create the new multi-stage
     std::unique_ptr<MultiStage> multiStage = std::make_unique<MultiStage>(
@@ -391,6 +393,10 @@ public:
                                     doMethod, doMethod.getInterval(),
                                     scope_.top()->LocalFieldnameToAccessIDMap, nullptr);
     ast->accept(statementMapper);
+    doMethod.setAST(std::move(*ast));
+    // TODO(SAP) should be
+    // ast.accept(statementMapper);
+    // doMethod.setAST(std::move(ast));
     DAWN_LOG(INFO) << "Inserted " << doMethod.getChildren().size() << " statements";
 
     if(context_.getDiagnostics().hasErrors())
@@ -398,7 +404,7 @@ public:
     // Here we compute the *actual* access of each statement and associate access to the AccessIDs
     // we set previously.
     DAWN_LOG(INFO) << "Filling accesses ...";
-    computeAccesses(instantiation_.get(), doMethod.getChildren());
+    computeAccesses(instantiation_.get(), doMethod.getStatements());
 
     // Now, we compute the fields of each stage (this will give us the IO-Policy of the fields)
     stage->update(iir::NodeUpdateType::level);

@@ -350,10 +350,10 @@ bool StencilFunctionInstantiation::hasStencilFunctionInstantiation(
           ExprToStencilFunctionInstantiationMap_.end());
 }
 
-const std::vector<std::unique_ptr<StatementAccessesPair>>&
-StencilFunctionInstantiation::getStatementAccessesPairs() const {
-  return doMethod_->getChildren();
-}
+// const std::vector<std::unique_ptr<StatementAccessesPair>>&
+// StencilFunctionInstantiation::getStatementAccessesPairs() const {
+//   return doMethod_->getChildren();
+// }
 
 //===------------------------------------------------------------------------------------------===//
 //     Accesses & Fields

@@ -399,6 +399,7 @@ void IIRSerializer::serializeIIR(proto::iir::StencilInstantiation& target,
           protoDoMethod->set_domethodid(domethod->getID());
 
           // adding it's children
+          // TODO(SAP)
           for(const auto& stmtaccesspair : domethod->getChildren()) {
             auto protoStmtAccessPair = protoDoMethod->add_stmtaccesspairs();
             serializeStmtAccessPair(protoStmtAccessPair, stmtaccesspair);
@@ -701,7 +702,8 @@ void IIRSerializer::deserializeIIR(std::shared_ptr<iir::StencilInstantiation>& t
               *makeInterval(protoDoMethod.interval()), target->getMetaData()));
 
           auto& IIRDoMethod = (IIRStage)->getChild(doMethodPos++);
-          (IIRDoMethod)->setID(protoDoMethod.domethodid());
+          IIRDoMethod->setID(protoDoMethod.domethodid());
+          // TODO(SAP): fix deserialization of AST
 
           for(const auto& protoStmtAccessPair : protoDoMethod.stmtaccesspairs()) {
             auto stmt = makeStmt(protoStmtAccessPair.aststmt(), ast::StmtData::IIR_DATA_TYPE);

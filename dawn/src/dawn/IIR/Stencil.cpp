@@ -481,9 +481,8 @@ Stencil::Lifetime Stencil::getLifetime(const int AccessID) const {
         DoMethod& doMethod = *doMethodPtr;
 
         int statementIdx = 0;
-        for(const auto& stmtAccessPair : doMethod.getChildren()) {
-          const Accesses& accesses =
-              *stmtAccessPair->getStatement()->getData<IIRStmtData>().CallerAccesses;
+        for(const auto& stmt : doMethod.getStatements()) {
+          const Accesses& accesses = *stmt->getData<IIRStmtData>().CallerAccesses;
 
           auto processAccessMap = [&](const std::unordered_map<int, Extents>& accessMap) {
             if(!accessMap.count(AccessID))

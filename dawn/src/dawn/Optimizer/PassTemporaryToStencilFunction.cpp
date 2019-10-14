@@ -520,8 +520,8 @@ SkipIDs PassTemporaryToStencilFunction::computeSkipAccessIDs(
   for(const auto& multiStage : stencilPtr->getChildren()) {
     iir::DependencyGraphAccesses graph(stencilInstantiation->getMetaData());
     for(const auto& doMethod : iterateIIROver<iir::DoMethod>(*multiStage)) {
-      for(const auto& stmt : doMethod->getChildren()) {
-        graph.insertStatementAccessesPair(stmt);
+      for(const auto& stmt : doMethod->getStatements()) {
+        graph.insertStatement(*stmt);
       }
     }
     // TODO this is crashing for the divergene helper
@@ -623,9 +623,8 @@ bool PassTemporaryToStencilFunction::run(
               continue;
             }
 
-            for(const auto& stmtAccessPair : doMethodPtr->getChildren()) {
-              const std::shared_ptr<iir::Stmt> stmt = stmtAccessPair->getStatement();
-
+            for(auto& stmt :
+                doMethodPtr->getStatements()) { // TODO(SAP) getStatements() should be const
               DAWN_ASSERT((stmt->getKind() != iir::Stmt::SK_ReturnStmt) &&
                           (stmt->getKind() != iir::Stmt::SK_StencilCallDeclStmt) &&
                           (stmt->getKind() != iir::Stmt::SK_VerticalRegionDeclStmt) &&
@@ -668,11 +667,13 @@ bool PassTemporaryToStencilFunction::run(
 
                   DAWN_ASSERT(tmpStmtDoMethod.getChildren().size() == 1);
 
-                  std::unique_ptr<iir::StatementAccessesPair>& stmtPair =
-                      *(tmpStmtDoMethod.childrenBegin());
-                  computeAccesses(stencilInstantiation.get(), stmtPair);
+                  // std::unique_ptr<iir::StatementAccessesPair>& stmtPair =
+                  //     *(tmpStmtDoMethod.childrenBegin());
+                  computeAccesses(stencilInstantiation.get(),
+                                  tmpStmtDoMethod.getStatements()[0]); // TODO(SAP)
 
-                  doMethodPtr->replace(stmtAccessPair, stmtPair);
+                  stmt = tmpStmtDoMethod.getStatements()[0];
+                  // doMethodPtr->replace(stmtAccessPair, stmtPair);
                   doMethodPtr->update(iir::NodeUpdateType::level);
                 }
 

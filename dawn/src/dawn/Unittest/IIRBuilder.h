@@ -137,7 +137,7 @@ public:
     ret->setID(si_->nextUID());
     int x[] = {(DAWN_ASSERT(stmts.sap), ret->insertChild(std::move(stmts.sap)), 0)...};
     (void)x;
-    computeAccesses(si_.get(), ret->getChildren());
+    computeAccesses(si_.get(), ret->getStatements());
     ret->updateLevel();
     return ret;
   }
