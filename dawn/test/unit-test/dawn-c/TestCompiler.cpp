@@ -266,4 +266,42 @@ TEST(CompilerTest, DISABLED_CodeGenQuadGradient) {
   of.close();
 }
 
+TEST(CompilerTest, DISABLED_CodeGenFVMNabla) {
+  using namespace dawn::iir;
+  using LocType = dawn::ast::Expr::LocationType;
+  UnstructuredIIRBuilder b;
+
+  auto pp = b.field("cell_field", LocType::Cells);
+  auto pnabla = b.field("cell_field", LocType::Cells); // out
+  auto zavgS = b.field("edge_field", LocType::Edges); // tmp
+
+  auto stencil_instantiation = b.build(
+      "nabla",
+      b.stencil(b.multistage(
+          dawn::iir::LoopOrderKind::Parallel,
+          b.stage(
+              LocType::Edges,
+              b.doMethod(dawn::sir::Interval::Start, dawn::sir::Interval::End,
+                         b.stmt(b.assignExpr(b.at(zavgS),
+                                             b.reduceOverNeighborExpr<float>(
+                                                 Op::plus, b.at(pp, HOffsetType::withOffset, 0),
+                                                 b.lit(0.), dawn::ast::Expr::LocationType::Edges,
+                                                 dawn::ast::Expr::LocationType::Cells,
+                                                 std::vector<float>({1., -1.})))))),
+          b.stage(
+              LocType::Cells,
+              b.doMethod(dawn::sir::Interval::Start, dawn::sir::Interval::End,
+                         b.stmt(b.assignExpr(b.at(cell_f),
+                                             b.reduceOverNeighborExpr<float>(
+                                                 Op::plus, b.at(edge_f, HOffsetType::withOffset, 0),
+                                                 b.lit(0.), dawn::ast::Expr::LocationType::Cells,
+                                                 dawn::ast::Expr::LocationType::Edges,
+                                                 std::vector<float>({0.5, 0., 0., 0.5})))))))));
+
+  std::ofstream of("prototype/generated_quadGradient.hpp");
+  DAWN_ASSERT_MSG(of, "file could not be opened. Binary must be called from dawn/dawn");
+  dump<dawn::codegen::cxxnaiveico::CXXNaiveIcoCodeGen>(of, stencil_instantiation);
+  of.close();
+}
+
 } // anonymous namespace
