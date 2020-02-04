@@ -34,8 +34,7 @@ from dawn4py.serialization import utils as sir_utils
 
 OUTPUT_NAME = "unstructured_vertical_solver"
 OUTPUT_FILE = f"{OUTPUT_NAME}.cpp"
-OUTPUT_PATH = os.path.join(os.path.dirname(
-    __file__), "data", f"{OUTPUT_NAME}.cpp")
+OUTPUT_PATH = f"{OUTPUT_NAME}.cpp"
 
 
 def create_vertical_region_stmt1():
@@ -175,12 +174,10 @@ def main(args: argparse.Namespace):
                     create_vertical_region_stmt2(),
                     create_vertical_region_stmt3()
                 ]),
-                [sir_utils.make_field("a", sir_utils.make_field_dimensions_unstructured([LocationType.Value('Cell')], 1)),
-                 sir_utils.make_field("b", sir_utils.make_field_dimensions_unstructured(
-                     [LocationType.Value('Cell')], 1)),
-                 sir_utils.make_field("c", sir_utils.make_field_dimensions_unstructured(
-                     [LocationType.Value('Cell')], 1)),
-                 sir_utils.make_field("d", sir_utils.make_field_dimensions_unstructured([LocationType.Value('Cell')], 1))]
+                [sir_utils.make_field("a", sir_utils.make_field_dimensions_unstructured(SIR.LocationType.Value('Cell'), 1)),
+                 sir_utils.make_field("b", sir_utils.make_field_dimensions_unstructured(SIR.LocationType.Value('Cell'), 1)),
+                 sir_utils.make_field("c", sir_utils.make_field_dimensions_unstructured(SIR.LocationType.Value('Cell'), 1)),
+                 sir_utils.make_field("d", sir_utils.make_field_dimensions_unstructured(SIR.LocationType.Value('Cell'), 1))]
             )
 
         ])

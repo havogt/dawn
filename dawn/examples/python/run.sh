@@ -9,7 +9,7 @@ for file in "${examples[@]}"
 do :
     python ${file}.py
     if [[ " ${verification[@]} " =~ " ${file} " ]]; then
-        diff data/${file}.cpp data/${file}_reference.cpp
+        diff ${file}.cpp data/${file}_reference.cpp
     fi
-    rm data/${file}.cpp
+    rm ${file}.cpp
 done
