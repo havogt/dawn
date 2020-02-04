@@ -17,6 +17,7 @@
 #include "dawn/CodeGen/CXXNaive-ico/CXXNaiveCodeGen.h"
 #include "dawn/CodeGen/CXXNaive/CXXNaiveCodeGen.h"
 #include "dawn/CodeGen/CodeGen.h"
+#include "dawn/IIR/ASTFwd.h"
 #include "dawn/Optimizer/OptimizerContext.h"
 #include "dawn/SIR/SIR.h"
 #include "dawn/Serialization/SIRSerializer.h"
@@ -249,12 +250,37 @@ TEST(CompilerTest, DISABLED_CodeGenQuadGradient) {
 
 TEST(CompilerTest, DISABLED_CodeGenFVMNabla) {
   using namespace dawn::iir;
-  using LocType = dawn::ast::Expr::LocationType;
+  using LocType = dawn::ast::LocationType;
   UnstructuredIIRBuilder b;
 
   auto pp = b.field("cell_field", LocType::Cells);
-  auto pnabla = b.field("cell_field", LocType::Cells); // out
-  auto zavgS = b.field("edge_field", LocType::Edges); // tmp
+  // auto pnabla = b.field("cell_field", LocType::Cells); // out
+  auto zavgS = b.field("zavgS", LocType::Edges); // tmp
+  auto rpole_bc = b.field("rpole_bc", LocType::Edges);
+  auto zbc = b.field("zbc", LocType::Edges);
+
+  auto iflip = b.localvar("iflip", dawn::BuiltinTypeID::Integer); // global variable?
+
+// original:
+// ---------------------------------
+// do jedge = 1,dstruct%nb_edges
+//   ip1 = dstruct%edges(1,jedge)
+//   ip2 = dstruct%edges(2,jedge)
+//   zbc = (1-iflip)+iflip*rpole_bc(jedge) ! iflip bool?
+//   zavg                = 0.5_wp*(pp(ip1)+zbc*pp(ip2))
+//   zavgS(:,jedge) = S(:,jedge)*zavg ! S = (2:n_edges) field
+// end do
+// ---------------------------------
+// pseudocode:
+// ---------------------------------
+// stage(edges) {
+//   zbc = (1-iflip)+iflip*rpole_bc(jedge);
+//   reduce<Cells->Edges>(init=0, op=+, weight={1, zbc}){
+//     zavgS0(jedge) = 0.5*S0(jedge)*pp(cell)
+//   }
+// }
+// ---------------------------------
+auto assign_zbc = b.binaryExpr(b.binaryExpr(b.lit(1),b.at(iflip), Op::minus),b.binaryExpr(b.at(iflip), b.at(rpole_bc), Op::multiply), Op::plus);
 
   auto stencil_instantiation = b.build(
       "nabla",
@@ -263,23 +289,36 @@ TEST(CompilerTest, DISABLED_CodeGenFVMNabla) {
           b.stage(
               LocType::Edges,
               b.doMethod(dawn::sir::Interval::Start, dawn::sir::Interval::End,
-                         b.stmt(b.assignExpr(b.at(zavgS),
-                                             b.reduceOverNeighborExpr<float>(
-                                                 Op::plus, b.at(pp, HOffsetType::withOffset, 0),
-                                                 b.lit(0.), dawn::ast::Expr::LocationType::Edges,
-                                                 dawn::ast::Expr::LocationType::Cells,
-                                                 std::vector<float>({1., -1.})))))),
-          b.stage(
-              LocType::Cells,
-              b.doMethod(dawn::sir::Interval::Start, dawn::sir::Interval::End,
-                         b.stmt(b.assignExpr(b.at(cell_f),
-                                             b.reduceOverNeighborExpr<float>(
-                                                 Op::plus, b.at(edge_f, HOffsetType::withOffset, 0),
-                                                 b.lit(0.), dawn::ast::Expr::LocationType::Cells,
-                                                 dawn::ast::Expr::LocationType::Edges,
-                                                 std::vector<float>({0.5, 0., 0., 0.5})))))))));
+                b.declareVar(iflip),
+                b.stmt(b.assignExpr(b.at(iflip),b.lit(1))),
+                b.stmt(b.assignExpr(b.at(zbc),std::move(assign_zbc))),
 
-  std::ofstream of("prototype/generated_quadGradient.hpp");
+                b.stmt(b.assignExpr(b.at(zavgS),
+                  b.reduceOverNeighborExpr<float>(
+                    Op::plus, b.at(pp, HOffsetType::withOffset, 0),
+                                                 b.lit(0.), LocType::Edges,
+                                                LocType::Cells,
+                                                 std::vector<int>({1.,1.}) // TODO should be {1,zbc}
+                                                //  std::vector<std::shared_ptr<dawn::ast::Expr>>{b.lit(1.), b.at(zbc)}
+                                                //  std::vector<std::shared_ptr<dawn::ast::Expr>{b.lit(1.), b.at(zbc)}
+
+//                                                  )))
+
+                                                 )))
+
+              //                                    ,b.stage(
+              // LocType::Cells,
+              // b.doMethod(dawn::sir::Interval::Start, dawn::sir::Interval::End,
+              //            b.stmt(b.assignExpr(b.at(cell_f),
+              //                                b.reduceOverNeighborExpr<float>(
+              //                                    Op::plus, b.at(edge_f, HOffsetType::withOffset, 0),
+              //                                    b.lit(0.), LocType::Cells,
+              //                                    LocType::Edges,
+              //                                    std::vector<float>({0.5, 0., 0., 0.5}))))))
+
+                                          )))));
+
+  std::ofstream of("prototype/generated_fvm_nabla.hpp");
   DAWN_ASSERT_MSG(of, "file could not be opened. Binary must be called from dawn/dawn");
   dump<dawn::codegen::cxxnaiveico::CXXNaiveIcoCodeGen>(of, stencil_instantiation);
   of.close();
