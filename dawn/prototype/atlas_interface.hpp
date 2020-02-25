@@ -115,7 +115,8 @@ auto getCells(atlasTag, atlas::Mesh const& m) { return utility::irange(0, m.cell
 auto getEdges(atlasTag, atlas::Mesh const& m) { return utility::irange(0, m.edges().size()); }
 auto getVertices(atlasTag, atlas::Mesh const& m) { return utility::irange(0, m.nodes().size()); }
 
-std::vector<int> getNeighs(const atlas::Mesh::HybridElements::Connectivity& conn, int idx) {
+template <typename ConnT>
+std::vector<int> getNeighs(const ConnT& conn, int idx) {
   std::vector<int> neighs;
   for(int n = 0; n < conn.cols(idx); ++n) {
     neighs.emplace_back(conn(idx, n));
@@ -195,7 +196,7 @@ std::vector<int> edgeNeighboursOfNode(atlas::Mesh const& m, int const& idx) {
   // note this is only a workaround and does only work as long as we have only one mesh
   static std::map<int, std::vector<int>> neighs;
   if(neighs.count(idx) == 0) {
-    neighs[idx] = getNeighs(m.cells().edge_connectivity(), idx);
+    neighs[idx] = getNeighs(m.nodes().edge_connectivity(), idx);
   }
   return neighs[idx];
 }
