@@ -20,7 +20,7 @@ int main() {
   // S = dual_normals
   // sign = see datastruct_module.f90 line 393ff
 
-  // lonlat for initialization of the test field
+  // lonlat for initialization of the test field (topology_module.f90 line 180ff)
 
   // octahedral: e.g. "O32"
   atlas::StructuredGrid structuredGrid = atlas::Grid("O32");
@@ -96,6 +96,40 @@ int main() {
     // TODO for nblevels > 1 we are missing a copy loop here
     for(int i = 0, size = mesh.nodes().size(); i < size; ++i) {
       pp(i, 0) = 1;
+    }
+  }
+
+  // setup input field
+  {
+    double rpi = 2.0 * std::asin(1.0);
+    double radius = 6371.22e+03;
+
+    double zh0 = 2000.0;
+    double zrad = 3. * rpi / 4.0 * radius;
+    double zeta = rpi / 16.0 * radius;
+    double zlatc = 0.0;
+    double zlonc = 3.0 * rpi / 2.0;
+
+    for(std::size_t jnode = 0; jnode < mesh.nodes().size(); ++jnode) {
+      rcoords( :, jnode) = rcoords_deg( :, jnode) * deg2rad;
+      rlonlatcr(
+          :, jnode) =
+          rcoords(
+              :, jnode); // lonlatcr is in physical space and may differ from coords later on
+      rcosa(jnode) = cos(rlonlatcr(MYY, jnode));
+      rsina(jnode) = sin(rlonlatcr(MYY, jnode));
+    }
+    for(std::size_t jnode = 0; jnode < mesh.nodes().size(); ++jnode) {
+
+      double zlon = rlonlatcr(MXX, jnode);
+      double zlat = rlonlatcr(MYY, jnode);
+      double zdist = sin(zlatc) * rsina(jnode) + cos(zlatc) * rcosa(jnode) * cos(zlon - zlonc);
+      zdist = radius * acos(zdist);
+      rzs(jnode) = 0.0;
+      if(zdist < zrad) {
+        rzs(jnode) =
+            rzs(jnode) + 0.5 * zh0 * (1.0 + cos(rpi * zdist / zrad)) * cos(rpi * zdist / zeta) * *2;
+      }
     }
   }
 
