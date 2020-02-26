@@ -1,4 +1,5 @@
 #include <fstream>
+#include <limits>
 
 #include "atlas/functionspace/EdgeColumns.h"
 #include "atlas/functionspace/NodeColumns.h"
@@ -23,8 +24,11 @@ int main() {
   // lonlat for initialization of the test field (topology_module.f90 line 180ff)
 
   // octahedral: e.g. "O32"
-  atlas::StructuredGrid structuredGrid = atlas::Grid("O180");
-  atlas::StructuredMeshGenerator generator;
+  atlas::StructuredGrid structuredGrid = atlas::Grid("O32");
+  atlas::MeshGenerator::Parameters generatorParams;
+  generatorParams.set("triangulate", true);
+  generatorParams.set("angle", -1.0);
+  atlas::StructuredMeshGenerator generator(generatorParams);
   auto mesh = generator.generate(structuredGrid);
   atlas::mesh::actions::build_edges(mesh);
   atlas::mesh::actions::build_node_to_edge_connectivity(mesh);
@@ -96,11 +100,11 @@ int main() {
       }
     }
 
-    auto pp = atlas::array::make_view<double, 2>(m_pp);
-    // TODO for nblevels > 1 we are missing a copy loop here
-    for(int i = 0, size = mesh.nodes().size(); i < size; ++i) {
-      pp(i, 0) = 1;
-    }
+    // auto pp = atlas::array::make_view<double, 2>(m_pp);
+    // // TODO for nblevels > 1 we are missing a copy loop here
+    // for(int i = 0, size = mesh.nodes().size(); i < size; ++i) {
+    //   pp(i, 0) = 1;
+    // }
   }
 
   // setup input field
@@ -140,8 +144,9 @@ int main() {
       rcosa(jnode, k_level) = cos(rlonlatcr(jnode, k_level, MYY));
       rsina(jnode, k_level) = sin(rlonlatcr(jnode, k_level, MYY));
     }
+    double min = std::numeric_limits<double>::max();
+    double max = std::numeric_limits<double>::min();
     for(std::size_t jnode = 0; jnode < mesh.nodes().size(); ++jnode) {
-
       double zlon = rlonlatcr(jnode, k_level, MXX);
       double zlat = rlonlatcr(jnode, k_level, MYY);
       double zdist = sin(zlatc) * rsina(jnode, k_level) +
@@ -152,7 +157,10 @@ int main() {
         rzs(jnode, k_level) = rzs(jnode, k_level) + 0.5 * zh0 * (1.0 + cos(rpi * zdist / zrad)) *
                                                         std::pow(cos(rpi * zdist / zeta), 2);
       }
+      min = std::min(min, rzs(jnode, k_level));
+      max = std::max(max, rzs(jnode, k_level));
     }
+    std::cout << "pp min=" << min << ", max=" << max << std::endl;
   }
 
   atlasInterface::Field<double> vol = atlas::array::make_view<double, 2>(m_vol);
@@ -177,5 +185,15 @@ int main() {
         mesh, nb_levels, S_MXX, S_MYY, zavgS_MXX, zavgS_MYY, pp, pnabla_MXX, pnabla_MYY, vol, sign)
         .run();
     gmesh.write(m_pnabla_MXX);
+    {
+      double min = std::numeric_limits<double>::max();
+      double max = std::numeric_limits<double>::min();
+      auto nabla = atlas::array::make_view<double, 2>(m_pnabla_MXX);
+      for(std::size_t jnode = 0; jnode < mesh.nodes().size(); ++jnode) {
+        min = std::min(min, nabla(jnode, 0));
+        max = std::max(max, nabla(jnode, 0));
+      }
+      std::cout << "nabla min=" << min << ", max=" << max << std::endl;
+    }
   }
 }
