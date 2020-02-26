@@ -23,7 +23,7 @@ int main() {
   // lonlat for initialization of the test field (topology_module.f90 line 180ff)
 
   // octahedral: e.g. "O32"
-  atlas::StructuredGrid structuredGrid = atlas::Grid("O32");
+  atlas::StructuredGrid structuredGrid = atlas::Grid("O180");
   atlas::StructuredMeshGenerator generator;
   auto mesh = generator.generate(structuredGrid);
   atlas::mesh::actions::build_edges(mesh);
@@ -52,6 +52,10 @@ int main() {
   constexpr int MXX = 0;
   constexpr int MYY = 1;
 
+  double rpi = 2.0 * std::asin(1.0);
+  double radius = 6371.22e+03;
+  double deg2rad = 2. * rpi / 360.;
+
   {
     // all fields supported by dawn are 2 dimensional: (unstructured, lev)
     // S has dimensions (unstructured, [MMX/MMY])
@@ -59,13 +63,13 @@ int main() {
     auto S_MYY = atlas::array::make_view<double, 2>(m_S_MYY);
     // TODO for nblevels > 1 we are missing a copy loop here
     for(int i = 0, size = mesh.edges().size(); i < size; ++i) {
-      S_MXX(i, 0) = S(i, MXX);
-      S_MYY(i, 0) = S(i, MYY);
+      S_MXX(i, 0) = S(i, MXX) * radius * deg2rad;
+      S_MYY(i, 0) = S(i, MYY) * radius * deg2rad;
     }
     auto vol = atlas::array::make_view<double, 2>(m_vol);
     // TODO for nblevels > 1 we are missing a copy loop here
     for(int i = 0, size = mesh.nodes().size(); i < size; ++i) {
-      vol(i, 0) = vol_atlas(i);
+      vol(i, 0) = vol_atlas(i) * (std::pow(deg2rad, 2) * std::pow(radius, 2));
     }
 
     // compute sign field
@@ -101,34 +105,52 @@ int main() {
 
   // setup input field
   {
-    double rpi = 2.0 * std::asin(1.0);
-    double radius = 6371.22e+03;
-
     double zh0 = 2000.0;
     double zrad = 3. * rpi / 4.0 * radius;
     double zeta = rpi / 16.0 * radius;
     double zlatc = 0.0;
     double zlonc = 3.0 * rpi / 2.0;
 
+    atlas::Field m_rlonlatcr{fs_nodes.createField<double>(
+        atlas::option::name("m_rlonlatcr") | atlas::option::variables(edges_per_node))};
+    auto rlonlatcr = atlas::array::make_view<double, 3>(m_rlonlatcr);
+
+    atlas::Field m_rcoords{fs_nodes.createField<double>(atlas::option::name("m_rcoords") |
+                                                        atlas::option::variables(edges_per_node))};
+    auto rcoords = atlas::array::make_view<double, 3>(m_rcoords);
+
+    atlas::Field m_rcosa{fs_nodes.createField<double>(atlas::option::name("m_rcosa"))};
+    auto rcosa = atlas::array::make_view<double, 2>(m_rcosa);
+
+    atlas::Field m_rsina{fs_nodes.createField<double>(atlas::option::name("m_rsina"))};
+    auto rsina = atlas::array::make_view<double, 2>(m_rsina);
+
+    auto rzs = atlas::array::make_view<double, 2>(m_pp);
+
+    std::size_t k_level = 0;
+
+    const auto rcoords_deg = atlas::array::make_view<double, 2>(mesh.nodes().field("lonlat"));
+
     for(std::size_t jnode = 0; jnode < mesh.nodes().size(); ++jnode) {
-      rcoords( :, jnode) = rcoords_deg( :, jnode) * deg2rad;
-      rlonlatcr(
-          :, jnode) =
-          rcoords(
-              :, jnode); // lonlatcr is in physical space and may differ from coords later on
-      rcosa(jnode) = cos(rlonlatcr(MYY, jnode));
-      rsina(jnode) = sin(rlonlatcr(MYY, jnode));
+      for(std::size_t i = 0; i < 2; ++i) {
+        rcoords(jnode, k_level, i) = rcoords_deg(jnode, i) * deg2rad;
+        rlonlatcr(jnode, k_level, i) = rcoords(
+            jnode, k_level, i); // lonlatcr is in physical space and may differ from coords later
+      }
+      rcosa(jnode, k_level) = cos(rlonlatcr(jnode, k_level, MYY));
+      rsina(jnode, k_level) = sin(rlonlatcr(jnode, k_level, MYY));
     }
     for(std::size_t jnode = 0; jnode < mesh.nodes().size(); ++jnode) {
 
-      double zlon = rlonlatcr(MXX, jnode);
-      double zlat = rlonlatcr(MYY, jnode);
-      double zdist = sin(zlatc) * rsina(jnode) + cos(zlatc) * rcosa(jnode) * cos(zlon - zlonc);
+      double zlon = rlonlatcr(jnode, k_level, MXX);
+      double zlat = rlonlatcr(jnode, k_level, MYY);
+      double zdist = sin(zlatc) * rsina(jnode, k_level) +
+                     cos(zlatc) * rcosa(jnode, k_level) * cos(zlon - zlonc);
       zdist = radius * acos(zdist);
-      rzs(jnode) = 0.0;
+      rzs(jnode, k_level) = 0.0;
       if(zdist < zrad) {
-        rzs(jnode) =
-            rzs(jnode) + 0.5 * zh0 * (1.0 + cos(rpi * zdist / zrad)) * cos(rpi * zdist / zeta) * *2;
+        rzs(jnode, k_level) = rzs(jnode, k_level) + 0.5 * zh0 * (1.0 + cos(rpi * zdist / zrad)) *
+                                                        std::pow(cos(rpi * zdist / zeta), 2);
       }
     }
   }
