@@ -91,18 +91,19 @@ public:
       : mesh_{[&grid]() {
           atlas::StructuredGrid structuredGrid = atlas::Grid(grid);
           atlas::MeshGenerator::Parameters generatorParams;
-          generatorParams.set("three_dimensional", false);
+          // generatorParams.set("three_dimensional", false);
           generatorParams.set("triangulate", true);
-          generatorParams.set("patch_pole", true);
-          generatorParams.set("include_pole", false);
+          // generatorParams.set("patch_pole", true);
+          // generatorParams.set("include_pole", false);
           generatorParams.set("angle", -1.0);
-          generatorParams.set("ghost_at_end", true);
+          // generatorParams.set("angle", -1.0);
+          // generatorParams.set("ghost_at_end", true);
 
           atlas::StructuredMeshGenerator generator(generatorParams);
           return generator.generate(structuredGrid);
         }()},
-        fs_edges_(mesh_, atlas::option::levels(nb_levels)),
-        fs_nodes_(mesh_, atlas::option::levels(nb_levels)), //
+        fs_edges_(mesh_, atlas::option::levels(nb_levels) | atlas::option::halo(1)),
+        fs_nodes_(mesh_, atlas::option::levels(nb_levels) | atlas::option::halo(1)), //
         nb_levels_(nb_levels), m_S_MXX(fs_edges_.createField<double>(atlas::option::name("S_MXX"))),
         m_S_MYY(fs_edges_.createField<double>(atlas::option::name("S_MYY"))),
         m_vol(fs_nodes_.createField<double>(atlas::option::name("vol"))),
@@ -125,7 +126,9 @@ private:
     print_min_max_1d(mesh_.nodes().field("dual_volumes"));
     const auto vol_atlas = atlas::array::make_view<double, 1>(mesh_.nodes().field("dual_volumes"));
     auto vol = atlas::array::make_view<double, 2>(m_vol);
-    for(int i = 0, size = mesh_.nodes().size(); i < size; ++i) {
+    std::cout << "vol size = " << vol_atlas.size() << std::endl;
+    for(int i = 0, size = vol_atlas.size(); i < size; ++i) {
+      std::cout << vol_atlas(i) << std::endl;
       vol(i, 0) = vol_atlas(i) * (std::pow(deg2rad, 2) * std::pow(radius, 2));
     }
   }
@@ -234,7 +237,7 @@ public:
 
 int main() {
 
-  FVMDriver driver{"O32", 1};
+  FVMDriver driver{"O2", 1};
 
   // input
   atlas::Field m_pp = driver.fs_nodes().createField<double>(atlas::option::name("pp"));
