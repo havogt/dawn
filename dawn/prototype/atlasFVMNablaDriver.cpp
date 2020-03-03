@@ -40,6 +40,26 @@ void print_min_max(atlas::Field const& field) {
   auto [min, max] = min_max(field);
   std::cout << field.name() << " min=" << min << ", max=" << max << std::endl;
 }
+
+std::pair<double, double> min_max_1d(atlas::Field const& field) {
+  assert(field.rank() == 1);
+
+  double min = std::numeric_limits<double>::max();
+  double max = std::numeric_limits<double>::min();
+  auto nabla = atlas::array::make_view<double, 1>(field);
+
+  auto shape = field.shape();
+
+  for(std::size_t jnode = 0; jnode < field.shape()[0]; ++jnode) {
+    min = std::min(min, nabla(jnode));
+    max = std::max(max, nabla(jnode));
+  }
+  return {min, max};
+}
+void print_min_max_1d(atlas::Field const& field) {
+  auto [min, max] = min_max_1d(field);
+  std::cout << field.name() << " min=" << min << ", max=" << max << std::endl;
+}
 } // namespace
 
 namespace {
@@ -71,8 +91,13 @@ public:
       : mesh_{[&grid]() {
           atlas::StructuredGrid structuredGrid = atlas::Grid(grid);
           atlas::MeshGenerator::Parameters generatorParams;
+          generatorParams.set("three_dimensional", false);
           generatorParams.set("triangulate", true);
+          generatorParams.set("patch_pole", true);
+          generatorParams.set("include_pole", false);
           generatorParams.set("angle", -1.0);
+          generatorParams.set("ghost_at_end", true);
+
           atlas::StructuredMeshGenerator generator(generatorParams);
           return generator.generate(structuredGrid);
         }()},
@@ -97,6 +122,7 @@ public:
 
 private:
   void initialize_vol() {
+    print_min_max_1d(mesh_.nodes().field("dual_volumes"));
     const auto vol_atlas = atlas::array::make_view<double, 1>(mesh_.nodes().field("dual_volumes"));
     auto vol = atlas::array::make_view<double, 2>(m_vol);
     for(int i = 0, size = mesh_.nodes().size(); i < size; ++i) {
@@ -253,5 +279,4 @@ int main() {
   std::cout << "after nabla: " << std::endl;
   print_min_max(m_pnabla_MXX);
   print_min_max(m_zavgS_MXX);
-}
 }
