@@ -27,7 +27,6 @@ else()
 endif()
 
 if(eckit_FOUND AND atlas_FOUND)
-
   # Need to specify here the names of the stencil codes that are going to be generated.
   set(generated_stencil_codes generated_copyCell.hpp
     generated_copyEdge.hpp
@@ -96,6 +95,7 @@ if(eckit_FOUND AND atlas_FOUND)
     COMMAND $<TARGET_FILE:${test_name}> --gtest_output=xml:${test_name}_unittest.xml
   )
 
+  add_subdirectory(from-dawn4py)
 else()
   message(STATUS "Atlas integration tests require both eckit and atlas. Disabling...")
 endif()
