@@ -115,7 +115,7 @@ def main(args: argparse.Namespace):
         sir_utils.pprint(sir)
 
     # compile
-    code = dawn4py.compile(sir, backend="c++-naive-ico")
+    code = dawn4py.compile(sir, backend="c++-naive-ico", stage_merger=True)
 
     # write to file
     print(f"Writing generated code to '{OUTPUT_FILE}'")

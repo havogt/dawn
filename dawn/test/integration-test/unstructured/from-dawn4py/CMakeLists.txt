@@ -30,7 +30,7 @@ function(generate_from_dawn4py)
   )
 endfunction()
 
-# generate_from_dawn4py(NAME fvm_nabla)
+generate_from_dawn4py(NAME fvm_nabla)
 add_executable(fvm_nabla_atlas_driver fvm_nabla_atlas_driver.cpp)
 target_include_directories(fvm_nabla_atlas_driver PRIVATE ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY})
 target_include_directories(fvm_nabla_atlas_driver PRIVATE ${CMAKE_SOURCE_DIR}/src)

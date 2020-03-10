@@ -137,8 +137,8 @@ private:
     assert(nb_levels_ == 1);
     int klevel = 0;
     for(int i = 0, size = mesh_.edges().size(); i < size; ++i) {
-      S_MXX(i, 0) = S(i, MXX) * radius * deg2rad;
-      S_MYY(i, 0) = S(i, MYY) * radius * deg2rad;
+      S_MXX(i, klevel) = S(i, MXX) * radius * deg2rad;
+      S_MYY(i, klevel) = S(i, MYY) * radius * deg2rad;
     }
   }
 
@@ -216,7 +216,7 @@ public:
     }
     for(std::size_t jnode = 0; jnode < mesh_.nodes().size(); ++jnode) {
       double zlon = rlonlatcr(jnode, k_level, MXX);
-      double zlat = rlonlatcr(jnode, k_level, MYY);
+      //   double zlat = rlonlatcr(jnode, k_level, MYY);
       double zdist = sin(zlatc) * rsina(jnode, k_level) +
                      cos(zlatc) * rcosa(jnode, k_level) * cos(zlon - zlonc);
       zdist = radius * acos(zdist);
