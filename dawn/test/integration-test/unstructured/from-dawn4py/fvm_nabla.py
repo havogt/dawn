@@ -24,8 +24,7 @@ from dawn4py.serialization import SIR
 from dawn4py.serialization import utils as sir_utils
 
 OUTPUT_NAME = "fvm_nabla"
-OUTPUT_FILE = f"{OUTPUT_NAME}.cpp"
-OUTPUT_PATH = f"{OUTPUT_NAME}.cpp"
+OUTPUT_FILE = f"{OUTPUT_NAME}.hpp"
 
 
 def main(args: argparse.Namespace):
@@ -119,8 +118,8 @@ def main(args: argparse.Namespace):
     code = dawn4py.compile(sir, backend="c++-naive-ico")
 
     # write to file
-    print(f"Writing generated code to '{OUTPUT_PATH}'")
-    with open(OUTPUT_PATH, "w") as f:
+    print(f"Writing generated code to '{OUTPUT_FILE}'")
+    with open(OUTPUT_FILE, "w") as f:
         f.write(code)
 
 
