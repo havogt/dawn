@@ -27,6 +27,7 @@ function(generate_from_dawn4py)
     PYTHONPATH=${DAWN4PY_MODULE_DIR}:${PROTOBUF_PYTHON_DIR}
     ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${ARG_NAME}.py
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}
+    DEPENDS python
   )
 endfunction()
 
@@ -37,4 +38,3 @@ target_include_directories(fvm_nabla_atlas_driver PRIVATE ${CMAKE_SOURCE_DIR}/sr
 
 target_add_dawn_standard_props(fvm_nabla_atlas_driver)
 target_link_libraries(fvm_nabla_atlas_driver ${PROJECT_NAME} eckit atlas)
-# target_link_libraries(fvm_nabla_atlas_drive GridTools::gridtools) # TODO shouldn't be needed
