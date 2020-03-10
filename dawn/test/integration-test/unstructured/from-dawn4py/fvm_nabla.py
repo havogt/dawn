@@ -73,6 +73,8 @@ def main(args: argparse.Namespace):
             ),
             sir_utils.make_assignment_stmt(sir_utils.make_field_access_expr(
                 "zavgS_MXX"), sir_utils.make_binary_operator(sir_utils.make_field_access_expr("S_MXX"), "*", sir_utils.make_var_access_expr("zavg"))),
+            sir_utils.make_assignment_stmt(sir_utils.make_field_access_expr(
+                "zavgS_MYY"), sir_utils.make_binary_operator(sir_utils.make_field_access_expr("S_MYY"), "*", sir_utils.make_var_access_expr("zavg"))),
             # ===========================
             sir_utils.make_assignment_stmt(sir_utils.make_field_access_expr(
                 "pnabla_MXX"), sir_utils.make_reduction_over_neighbor_expr(
@@ -84,13 +86,28 @@ def main(args: argparse.Namespace):
                     lhs_location=SIR.LocationType.Value('Vertex'),
                     rhs_location=SIR.LocationType.Value('Edge')
             )),
+            sir_utils.make_assignment_stmt(sir_utils.make_field_access_expr(
+                "pnabla_MYY"), sir_utils.make_reduction_over_neighbor_expr(
+                    "+",
+                    sir_utils.make_binary_operator(sir_utils.make_field_access_expr(
+                        "zavgS_MYY"), "*", sir_utils.make_field_access_expr("sign")),
+                    sir_utils.make_literal_access_expr(
+                        "0.0", SIR.BuiltinType.Float),
+                    lhs_location=SIR.LocationType.Value('Vertex'),
+                    rhs_location=SIR.LocationType.Value('Edge')
+            )),
             # ===========================
-            # TODO pole correction
+            # TODO pole correction for pnabla_MYY
             # ===========================
             sir_utils.make_assignment_stmt(sir_utils.make_field_access_expr(
                 "pnabla_MXX"),
                 sir_utils.make_binary_operator(sir_utils.make_field_access_expr(
                     "pnabla_MXX"), "/", sir_utils.make_field_access_expr("vol")),
+            ),
+            sir_utils.make_assignment_stmt(sir_utils.make_field_access_expr(
+                "pnabla_MYY"),
+                sir_utils.make_binary_operator(sir_utils.make_field_access_expr(
+                    "pnabla_MYY"), "/", sir_utils.make_field_access_expr("vol")),
             ),
         ]
     )
