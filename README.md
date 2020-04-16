@@ -1,3 +1,5 @@
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/MeteoSwiss-APN/dawn) 
+
 # Dawn ![](https://img.shields.io/github/license/Meteoswiss-APN/dawn) [![](https://dxssrr2j0sq4w.cloudfront.net/3.2.0/img/external/zenhub-badge.png)](https://app.zenhub.com/workspaces/dawn-5db41ac773e8f70001d9e352/board?repos)
 
 > Compiler toolchain to enable generation of high-level DSLs for geophysical fluid dynamics models
