@@ -10,9 +10,15 @@
 #include "atlas/meshgenerator.h"
 #include "atlas/option/Options.h"
 #include "atlas/output/Gmsh.h"
-#include "interface/atlas_interface.hpp"
+#include "atlas_interface.hpp"
 
-#include "fvm_nabla.hpp"
+#include "fvm_nabla_hand_fixed.cpp"
+
+// see atlas/numerics/fmv/Nabla.cc gradient_of_scalar
+// vol = dual_volumes
+// S = dual_normals
+// sign = see datastruct_module.f90 line 393ff
+// lonlat for initialization of the test field (topology_module.f90 line 180ff)
 
 namespace {
 std::pair<double, double> min_max(atlas::Field const& field) {
@@ -95,35 +101,18 @@ public:
 
           atlas::StructuredMeshGenerator generator(generatorParams);
           return generator.generate(structuredGrid);
-        }()}
-  // fs_edges_(mesh_, atlas::option::levels(nb_levels) | atlas::option::halo(1)),
-  // fs_nodes_(mesh_, atlas::option::levels(nb_levels) | atlas::option::halo(1)), //
-  // nb_levels_(nb_levels), m_S_MXX(fs_edges_.createField<double>(atlas::option::name("S_MXX"))),
-  // m_S_MYY(fs_edges_.createField<double>(atlas::option::name("S_MYY"))),
-  // m_vol(fs_nodes_.createField<double>(atlas::option::name("vol"))),
-  // m_sign(fs_nodes_.createField<double>(atlas::option::name("m_sign") |
-  //                                      atlas::option::variables(FVMDriver::edges_per_node)))
-  {
-
+        }()},
+        fs_edges_(mesh_, atlas::option::levels(nb_levels) | atlas::option::halo(1)),
+        fs_nodes_(mesh_, atlas::option::levels(nb_levels) | atlas::option::halo(1)), //
+        nb_levels_(nb_levels), m_S_MXX(fs_edges_.createField<double>(atlas::option::name("S_MXX"))),
+        m_S_MYY(fs_edges_.createField<double>(atlas::option::name("S_MYY"))),
+        m_vol(fs_nodes_.createField<double>(atlas::option::name("vol"))),
+        m_sign(fs_nodes_.createField<double>(atlas::option::name("m_sign") |
+                                             atlas::option::variables(FVMDriver::edges_per_node))) {
     atlas::mesh::actions::build_edges(mesh_);
-    fs_edges_ = atlas::functionspace::EdgeColumns(mesh_, atlas::option::levels(nb_levels) |
-                                                             atlas::option::halo(1));
-    fs_nodes_ = atlas::functionspace::NodeColumns(mesh_, atlas::option::levels(nb_levels) |
-                                                             atlas::option::halo(1));
     atlas::mesh::actions::build_node_to_edge_connectivity(mesh_);
     atlas::mesh::actions::build_median_dual_mesh(mesh_);
 
-    nb_levels_ = nb_levels;
-    m_S_MXX = fs_edges_.createField<double>(atlas::option::name("S_MXX"));
-    m_S_MYY = fs_edges_.createField<double>(atlas::option::name("S_MYY"));
-    m_vol = fs_nodes_.createField<double>(atlas::option::name("vol"));
-    m_sign = fs_nodes_.createField<double>(atlas::option::name("m_sign") |
-                                           atlas::option::variables(FVMDriver::edges_per_node));
-    const auto vol_atlas = atlas::array::make_view<double, 1>(mesh_.nodes().field("dual_volumes"));
-
-    std::cout << "ctor 0:" << m_vol.size() << std::endl;
-    std::cout << "ctor 1:" << vol_atlas.size() << std::endl;
-    std::cout << "ctor 2:" << mesh_.nodes().size() << std::endl;
     initialize_S();
     print_min_max(m_S_MXX);
     print_min_max(m_S_MYY);
@@ -138,10 +127,8 @@ private:
     const auto vol_atlas = atlas::array::make_view<double, 1>(mesh_.nodes().field("dual_volumes"));
     auto vol = atlas::array::make_view<double, 2>(m_vol);
     std::cout << "vol size = " << vol_atlas.size() << std::endl;
-    std::cout << "vol copy = " << vol.size() << std::endl;
-    std::cout << "fs_nodes = " << fs_nodes_.size() << std::endl;
     for(int i = 0, size = vol_atlas.size(); i < size; ++i) {
-      // std::cout << vol_atlas(i) << std::endl;
+      std::cout << vol_atlas(i) << std::endl;
       vol(i, 0) = vol_atlas(i) * (std::pow(deg2rad, 2) * std::pow(radius, 2));
     }
   }
@@ -156,8 +143,8 @@ private:
     assert(nb_levels_ == 1);
     int klevel = 0;
     for(int i = 0, size = mesh_.edges().size(); i < size; ++i) {
-      S_MXX(i, klevel) = S(i, MXX) * radius * deg2rad;
-      S_MYY(i, klevel) = S(i, MYY) * radius * deg2rad;
+      S_MXX(i, 0) = S(i, MXX) * radius * deg2rad;
+      S_MYY(i, 0) = S(i, MYY) * radius * deg2rad;
     }
   }
 
@@ -235,7 +222,7 @@ public:
     }
     for(std::size_t jnode = 0; jnode < mesh_.nodes().size(); ++jnode) {
       double zlon = rlonlatcr(jnode, k_level, MXX);
-      //   double zlat = rlonlatcr(jnode, k_level, MYY);
+      double zlat = rlonlatcr(jnode, k_level, MYY);
       double zdist = sin(zlatc) * rsina(jnode, k_level) +
                      cos(zlatc) * rcosa(jnode, k_level) * cos(zlon - zlonc);
       zdist = radius * acos(zdist);
@@ -250,7 +237,7 @@ public:
 
 int main() {
 
-  FVMDriver driver{"O32", 1};
+  FVMDriver driver{"O2", 1};
 
   // input
   atlas::Field m_pp = driver.fs_nodes().createField<double>(atlas::option::name("pp"));
@@ -285,15 +272,12 @@ int main() {
   atlasInterface::Field<double> pnabla_MYY = atlas::array::make_view<double, 2>(m_pnabla_MYY);
   atlasInterface::SparseDimension<double> sign = atlas::array::make_view<double, 3>(driver.sign());
 
-  std::cout << "nodes size: " << driver.mesh()->nodes().size() << std::endl;
-  std::cout << "fs nodes size: " << driver.fs_nodes().size() << std::endl;
-
   dawn_generated::cxxnaiveico::fvm_nabla<atlasInterface::atlasTag>(
       driver.mesh(), driver.nb_levels(), S_MXX, S_MYY, zavgS_MXX, zavgS_MYY, pp, pnabla_MXX,
       pnabla_MYY, vol, sign)
       .run();
 
-  // gmesh.write(m_pnabla_MXX);
+  gmesh.write(m_pnabla_MXX);
 
   std::cout << "after nabla: " << std::endl;
   print_min_max(m_pnabla_MXX);

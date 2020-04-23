@@ -27,11 +27,10 @@ function(generate_from_dawn4py)
     PYTHONPATH=${DAWN4PY_MODULE_DIR}:${PROTOBUF_PYTHON_DIR}
     ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${ARG_NAME}.py
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}
-    DEPENDS python
   )
 endfunction()
 
-generate_from_dawn4py(NAME fvm_nabla)
+# generate_from_dawn4py(NAME fvm_nabla)
 add_executable(fvm_nabla_atlas_driver fvm_nabla_atlas_driver.cpp)
 target_include_directories(fvm_nabla_atlas_driver PRIVATE ${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY})
 target_include_directories(fvm_nabla_atlas_driver PRIVATE ${CMAKE_SOURCE_DIR}/src)
