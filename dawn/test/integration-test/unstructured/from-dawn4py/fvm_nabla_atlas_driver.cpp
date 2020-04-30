@@ -15,7 +15,7 @@
 #include "fvm_nabla.hpp"
 
 namespace {
-std::pair<double, double> min_max(atlas::Field const& field) {
+std::tuple<double, double, double> min_max(atlas::Field const& field) {
   assert(field.rank() == 2);
 
   double min = std::numeric_limits<double>::max();
@@ -24,18 +24,22 @@ std::pair<double, double> min_max(atlas::Field const& field) {
 
   auto shape = field.shape();
 
+  std::cout << field.shape()[0] << std::endl;
+
+  double avg = 0.;
   for(std::size_t jnode = 0; jnode < field.shape()[0]; ++jnode) {
     min = std::min(min, nabla(jnode, 0));
     max = std::max(max, nabla(jnode, 0));
+    avg += nabla(jnode, 0);
   }
-  return {min, max};
+  return {min, max, avg / (double)field.shape()[0]};
 }
 void print_min_max(atlas::Field const& field) {
-  auto [min, max] = min_max(field);
-  std::cout << field.name() << " min=" << min << ", max=" << max << std::endl;
+  auto [min, max, avg] = min_max(field);
+  std::cout << field.name() << " min=" << min << ", max=" << max << ", avg=" << avg << std::endl;
 }
 
-std::pair<double, double> min_max_1d(atlas::Field const& field) {
+std::tuple<double, double, double> min_max_1d(atlas::Field const& field) {
   assert(field.rank() == 1);
 
   double min = std::numeric_limits<double>::max();
@@ -44,15 +48,17 @@ std::pair<double, double> min_max_1d(atlas::Field const& field) {
 
   auto shape = field.shape();
 
+  double avg = 0.;
   for(std::size_t jnode = 0; jnode < field.shape()[0]; ++jnode) {
     min = std::min(min, nabla(jnode));
     max = std::max(max, nabla(jnode));
+    avg += nabla(jnode);
   }
-  return {min, max};
+  return {min, max, avg / (double)field.shape()[0]};
 }
 void print_min_max_1d(atlas::Field const& field) {
-  auto [min, max] = min_max_1d(field);
-  std::cout << field.name() << " min=" << min << ", max=" << max << std::endl;
+  auto [min, max, avg] = min_max_1d(field);
+  std::cout << field.name() << " min=" << min << ", max=" << max << ", avg=" << avg << std::endl;
 }
 } // namespace
 
@@ -89,7 +95,7 @@ public:
           generatorParams.set("triangulate", true);
           // generatorParams.set("patch_pole", true);
           // generatorParams.set("include_pole", false);
-          generatorParams.set("angle", -1.0);
+          generatorParams.set("angle", 20.0);
           // generatorParams.set("angle", -1.0);
           // generatorParams.set("ghost_at_end", true);
 
@@ -122,7 +128,7 @@ private:
     auto vol = atlas::array::make_view<double, 2>(m_vol);
     std::cout << "vol size = " << vol_atlas.size() << std::endl;
     for(int i = 0, size = vol_atlas.size(); i < size; ++i) {
-      std::cout << vol_atlas(i) << std::endl;
+      // std::cout << vol_atlas(i) << std::endl;
       vol(i, 0) = vol_atlas(i) * (std::pow(deg2rad, 2) * std::pow(radius, 2));
     }
   }
@@ -179,6 +185,7 @@ public:
 
   // TODO ask Christian for a proper name for this input data
   void fillInputData(atlas::Field const& field) const {
+    std::cout << field.name() << " size = " << field.size() << std::endl;
     double zh0 = 2000.0;
     double zrad = 3. * rpi / 4.0 * radius;
     double zeta = rpi / 16.0 * radius;
@@ -205,7 +212,9 @@ public:
 
     const auto rcoords_deg = atlas::array::make_view<double, 2>(mesh_.nodes().field("lonlat"));
 
-    for(std::size_t jnode = 0; jnode < mesh_.nodes().size(); ++jnode) {
+    print_min_max(mesh_.nodes().field("lonlat"));
+
+    for(std::size_t jnode = 0; jnode < fs_nodes_.size(); ++jnode) {
       for(std::size_t i = 0; i < 2; ++i) {
         rcoords(jnode, k_level, i) = rcoords_deg(jnode, i) * deg2rad;
         rlonlatcr(jnode, k_level, i) = rcoords(
@@ -214,6 +223,8 @@ public:
       rcosa(jnode, k_level) = cos(rlonlatcr(jnode, k_level, MYY));
       rsina(jnode, k_level) = sin(rlonlatcr(jnode, k_level, MYY));
     }
+    print_min_max(m_rcosa);
+    print_min_max(m_rsina);
     for(std::size_t jnode = 0; jnode < mesh_.nodes().size(); ++jnode) {
       double zlon = rlonlatcr(jnode, k_level, MXX);
       //   double zlat = rlonlatcr(jnode, k_level, MYY);
@@ -231,7 +242,7 @@ public:
 
 int main() {
 
-  FVMDriver driver{"O2", 1};
+  FVMDriver driver{"O32", 1};
 
   // input
   atlas::Field m_pp = driver.fs_nodes().createField<double>(atlas::option::name("pp"));
