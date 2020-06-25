@@ -129,6 +129,13 @@ std::string CXXNaiveCodeGen::generateStencilInstantiation(
 
   stencilWrapperClass.commit();
 
+  MemberFunction maker(stencilInstantiation->getName(), "make_" + stencilInstantiation->getName(),
+                       ssSW);
+  maker.addArg("const " + c_dgt() + "domain& dom");
+  maker.startBody();
+  maker.addStatement("return " + stencilInstantiation->getName() + "{dom}");
+  maker.commit();
+
   cxxnaiveNamespace.commit();
   dawnNamespace.commit();
 
@@ -142,27 +149,51 @@ void CXXNaiveCodeGen::generateStencilWrapperRun(
 
   const auto& metadata = stencilInstantiation->getMetaData();
 
-  // Generate the run method by generate code for the stencil description AST
-  MemberFunction runMethod = stencilWrapperClass.addMemberFunction("void", "run", "");
+  std::vector<std::string> apiFieldNames;
 
   for(const auto& fieldID : metadata.getAccessesOfType<iir::FieldAccessType::APIField>()) {
     std::string name = metadata.getFieldNameFromAccessID(fieldID);
-    runMethod.addArg(codeGenProperties.getParamType(stencilInstantiation, name) + " " + name);
+    apiFieldNames.push_back(name);
   }
 
-  runMethod.finishArgs();
+  // Generate the call operator
+  MemberFunction CallOperator = stencilWrapperClass.addMemberFunction(
+      "void", "operator()",
+      RangeToString(", ", "", "")(apiFieldNames, [&](auto name) { return "typename T_" + name; }));
+
+  for(const auto& fieldName : apiFieldNames) {
+    CallOperator.addArg("T_" + fieldName + "& " + fieldName);
+  }
+
+  CallOperator.startBody();
 
   // generate the control flow code executing each inner stencil
   ASTStencilDesc stencilDescCGVisitor(stencilInstantiation, codeGenProperties);
-  stencilDescCGVisitor.setIndent(runMethod.getIndent());
+  stencilDescCGVisitor.setIndent(CallOperator.getIndent());
   for(const auto& statement :
       stencilInstantiation->getIIR()->getControlFlowDescriptor().getStatements()) {
     statement->accept(stencilDescCGVisitor);
     auto str = stencilDescCGVisitor.getCodeAndResetStream();
     if(str.back() == ';')
       str.pop_back();
-    runMethod.addStatement(str);
+    CallOperator.addStatement(str);
   }
+
+  CallOperator.commit();
+
+  MemberFunction runMethod = stencilWrapperClass.addMemberFunction("void", "run", "");
+
+  for(const auto& fieldID : metadata.getAccessesOfType<iir::FieldAccessType::APIField>()) {
+    std::string name = metadata.getFieldNameFromAccessID(fieldID);
+    runMethod.addArg(codeGenProperties.getParamType(stencilInstantiation, name) + " " + name);
+  }
+  runMethod.finishArgs();
+
+  runMethod.startBody();
+
+  runMethod.addStatement(
+      "operator()(" + RangeToString(", ", "", "")(apiFieldNames, [&](auto name) { return name; }) +
+      ")");
 
   runMethod.commit();
 }
@@ -244,6 +275,7 @@ void CXXNaiveCodeGen::generateStencilWrapperMembers(
 
   stencilWrapperClass.changeAccessibility("public");
   stencilWrapperClass.addCopyConstructor(Class::ConstructorDefaultKind::Deleted);
+  stencilWrapperClass.addMoveConstructor(Class::ConstructorDefaultKind::Default);
   //
   // Members
   //
@@ -371,10 +403,13 @@ void CXXNaiveCodeGen::generateStencilClasses(
     //
     // Run-Method
     //
-    MemberFunction stencilRunMethod = stencilClass.addMemberFunction("void", "run", "");
+    MemberFunction stencilRunMethod = stencilClass.addMemberFunction(
+        "void", "run", RangeToString(", ", "", "")(nonTempFields, [&](auto field) {
+          return "typename T_" + field.second.Name;
+        }));
     for(auto it = nonTempFields.begin(); it != nonTempFields.end(); ++it) {
-      std::string type = stencilProperties->paramNameToType_.at((*it).second.Name);
-      stencilRunMethod.addArg(type + "& " + (*it).second.Name + "_");
+      // std::string type = stencilProperties->paramNameToType_.at((*it).second.Name);
+      stencilRunMethod.addArg("T_" + (*it).second.Name + "& " + (*it).second.Name + "_");
     }
 
     stencilRunMethod.startBody();
@@ -386,11 +421,10 @@ void CXXNaiveCodeGen::generateStencilClasses(
     stencilRunMethod.addStatement("int kMin = m_dom.kminus()");
     stencilRunMethod.addStatement("int kMax = m_dom.ksize() - m_dom.kplus() - 1");
 
-    for(const auto& fieldPair : nonTempFields) {
-      stencilRunMethod.addStatement(fieldPair.second.Name + "_" + ".sync()");
-    }
+    // for(const auto& fieldPair : nonTempFields) {
+    //   stencilRunMethod.addStatement(fieldPair.second.Name + "_" + ".sync()");
+    // }
     for(const auto& multiStagePtr : stencil.getChildren()) {
-
       stencilRunMethod.ss() << "{";
 
       const iir::MultiStage& multiStage = *multiStagePtr;
@@ -489,9 +523,9 @@ void CXXNaiveCodeGen::generateStencilClasses(
       }
       stencilRunMethod.ss() << "}";
     }
-    for(const auto& fieldPair : nonTempFields) {
-      stencilRunMethod.addStatement(fieldPair.second.Name + "_" + ".sync()");
-    }
+    // for(const auto& fieldPair : nonTempFields) {
+    //   stencilRunMethod.addStatement(fieldPair.second.Name + "_" + ".sync()");
+    // }
     stencilRunMethod.commit();
   }
 }

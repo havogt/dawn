@@ -251,6 +251,13 @@ std::string GTCodeGen::generateStencilInstantiation(
 
   stencilWrapperClass.commit();
 
+  MemberFunction maker(stencilInstantiation->getName(), "make_" + stencilInstantiation->getName(),
+                       ssSW);
+  maker.addArg("const " + c_dgt() + "domain& dom");
+  maker.startBody();
+  maker.addStatement("return " + stencilInstantiation->getName() + "{dom}");
+  maker.commit();
+
   gridtoolsNamespace.commit();
   dawnNamespace.commit();
 
@@ -321,9 +328,6 @@ void GTCodeGen::generateStencilWrapperRun(
         });
   }
 
-  // Generate the run method by generate code for the stencil description AST
-  MemberFunction RunMethod = stencilWrapperClass.addMemberFunction("void", "run");
-
   std::vector<std::string> apiFieldNames;
 
   for(const auto& fieldID : metadata.getAccessesOfType<iir::FieldAccessType::APIField>()) {
@@ -331,31 +335,40 @@ void GTCodeGen::generateStencilWrapperRun(
     apiFieldNames.push_back(name);
   }
 
+  // Generate the call operator
+  MemberFunction CallOperator = stencilWrapperClass.addMemberFunction(
+      "void", "operator()",
+      RangeToString(", ", "", "")(apiFieldNames, [&](auto name) { return "typename T_" + name; }));
+
+  for(const auto& fieldName : apiFieldNames) {
+    CallOperator.addArg("T_" + fieldName + "& " + fieldName);
+  }
+
+  CallOperator.startBody();
+
+  ASTStencilDesc stencilDescCGVisitor(stencilInstantiation, codeGenProperties,
+                                      stencilIDToRunArguments);
+  stencilDescCGVisitor.setIndent(CallOperator.getIndent());
+  for(const auto& statement :
+      stencilInstantiation->getIIR()->getControlFlowDescriptor().getStatements()) {
+    statement->accept(stencilDescCGVisitor);
+    CallOperator << stencilDescCGVisitor.getCodeAndResetStream();
+  }
+  CallOperator.commit();
+
+  // TODO remove run method and use the call operator API everywhere
+  MemberFunction RunMethod = stencilWrapperClass.addMemberFunction("void", "run");
   for(const auto& fieldName : apiFieldNames) {
     RunMethod.addArg(codeGenProperties.getParamType(stencilInstantiation, fieldName) + " " +
                      fieldName);
   }
-
   RunMethod.startBody();
   RangeToString apiFieldArgs(",", "", "");
-
-  bool withSync = codeGenOptions_.runWithSync_;
-  if(withSync) {
-    RunMethod.addStatement("sync_storages(" + apiFieldArgs(apiFieldNames) + ")");
-  }
-
-  ASTStencilDesc stencilDescCGVisitor(stencilInstantiation, codeGenProperties,
-                                      stencilIDToRunArguments);
-  stencilDescCGVisitor.setIndent(RunMethod.getIndent());
-  for(const auto& statement :
-      stencilInstantiation->getIIR()->getControlFlowDescriptor().getStatements()) {
-    statement->accept(stencilDescCGVisitor);
-    RunMethod << stencilDescCGVisitor.getCodeAndResetStream();
-  }
-
-  if(withSync) {
-    RunMethod.addStatement("sync_storages(" + apiFieldArgs(apiFieldNames) + ")");
-  }
+  RunMethod.addStatement("sync_storages(" + apiFieldArgs(apiFieldNames) + ")");
+  RunMethod.addStatement(
+      "operator()(" + RangeToString(", ", "", "")(apiFieldNames, [&](auto name) { return name; }) +
+      ")");
+  RunMethod.addStatement("sync_storages(" + apiFieldArgs(apiFieldNames) + ")");
   RunMethod.commit();
 }
 void GTCodeGen::generateStencilWrapperCtr(
@@ -369,6 +382,7 @@ void GTCodeGen::generateStencilWrapperCtr(
 
   stencilWrapperClass.changeAccessibility("public");
   stencilWrapperClass.addCopyConstructor(Class::ConstructorDefaultKind::Deleted);
+  stencilWrapperClass.addMoveConstructor(Class::ConstructorDefaultKind::Default);
 
   auto StencilWrapperConstructor = stencilWrapperClass.addConstructor();
 
@@ -607,9 +621,12 @@ void GTCodeGen::generateStencilClasses(
               iir::extent_cast<dawn::iir::CartesianExtent const&>(extents.horizontalExtent());
           auto const& vExtents = extents.verticalExtent();
 
-          extent.addTemplate(std::to_string(hExtents.iMinus()) + ", " + std::to_string(hExtents.iPlus()));
-          extent.addTemplate(std::to_string(hExtents.jMinus()) + ", " + std::to_string(hExtents.jPlus()));
-          extent.addTemplate(std::to_string(vExtents.minus()) + ", " + std::to_string(vExtents.plus()));
+          extent.addTemplate(std::to_string(hExtents.iMinus()) + ", " +
+                             std::to_string(hExtents.iPlus()));
+          extent.addTemplate(std::to_string(hExtents.jMinus()) + ", " +
+                             std::to_string(hExtents.jPlus()));
+          extent.addTemplate(std::to_string(vExtents.minus()) + ", " +
+                             std::to_string(vExtents.plus()));
 
           StencilFunStruct.addTypeDef(paramName)
               .addType(c_gt() + "accessor")
@@ -769,9 +786,12 @@ void GTCodeGen::generateStencilClasses(
               iir::extent_cast<iir::CartesianExtent const&>(extents.horizontalExtent());
           auto const& fieldVExtents = extents.verticalExtent();
 
-          extent.addTemplate(std::to_string(fieldHExtents.iMinus()) + ", " + std::to_string(fieldHExtents.iPlus()));
-          extent.addTemplate(std::to_string(fieldHExtents.jMinus()) + ", " + std::to_string(fieldHExtents.jPlus()));
-          extent.addTemplate(std::to_string(fieldVExtents.minus()) + ", " + std::to_string(fieldVExtents.plus()));
+          extent.addTemplate(std::to_string(fieldHExtents.iMinus()) + ", " +
+                             std::to_string(fieldHExtents.iPlus()));
+          extent.addTemplate(std::to_string(fieldHExtents.jMinus()) + ", " +
+                             std::to_string(fieldHExtents.jPlus()));
+          extent.addTemplate(std::to_string(fieldVExtents.minus()) + ", " +
+                             std::to_string(fieldVExtents.plus()));
 
           StageStruct.addTypeDef(paramName)
               .addType(c_gt() + "accessor")
